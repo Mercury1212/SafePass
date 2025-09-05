@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafePass - Secure Password Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/argon2-browser/1.18.0/argon2-bundled.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            font-size: 24px;
+        }
+
+        .logo h1 {
+            font-weight: 600;
+            font-size: 22px;
+        }
+
+        .search-bar {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            width: 300px;
+        }
+
+        .search-bar input {
+            background: transparent;
+            border: none;
+            color: white;
+            width: 100%;
+            margin-left: 8px;
+            outline: none;
+        }
+
+        .search-bar input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .user-actions button {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .user-actions button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 20px 0;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-section h3 {
+            padding: 0 20px;
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .sidebar-item:hover {
+            background: #f1f5f9;
+        }
+
+        .sidebar-item.active {
+            background: #e1f0ff;
+            color: #2980b9;
+            border-left: 4px solid #2980b9;
+        }
+
+        .sidebar-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .count {
+            margin-left: auto;
+            background: #eef2f7;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .content {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .content-header h2 {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .add-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .add-btn:hover {
+            background: #2980b9;
+        }
+
+        .password-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .password-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .password-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .favicon {
+            width: 40px;
+            height: 40px;
+            background: #eef2f7;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+            color: #3498db;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+
+        .card-username {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .card-details {
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .detail-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .detail-value {
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .password-masked {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .password-masked span {
+            letter-spacing: 2px;
+        }
+
+        .show-password {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .card-actions button {
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-actions button:hover {
+            color: #3498db;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 15px;
+            color: #7f8c8d;
+            font-size: 14px;
+            border-top: 1px solid #eef2f7;
+            background: white;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            color: #2c3e50;
+            font-size: 20px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .password-generator {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .password-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .option-group input[type="number"] {
+            width: 60px;
+        }
+
+        .generated-password {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .generated-password input {
+            flex: 1;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .generated-password button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+            padding: 0 12px;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #eef2f7;
+            color: #2c3e50;
+        }
+
+        /* Welcome screen */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .welcome-icon {
+            font-size: 64px;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+
+        .welcome-screen h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .welcome-screen p {
+            color: #7f8c8d;
+            max-width: 500px;
+            margin-bottom: 30px;
+        }
+
+        .welcome-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* File operations */
+        .file-handler {
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .loading-text {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+
+            .sidebar-item span {
+                display: none;
+            }
+
+            .count {
+                display: none;
+            }
+
+            .password-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .search-bar {
+                width: 150px;
+            }
+
+            .welcome-actions {
+                flex-direction: column;
+            }
+
+            .password-options {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #333;
+            color: white;
+            border-radius: 5px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: #27ae60;
+        }
+
+        .toast.error {
+            background: #e74c3c;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">Processing...</div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-lock"></i>
+            <h1>SafePass</h1>
+        </div>
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search passwords..." id="searchInput">
+        </div>
+        <div class="user-actions">
+            <button id="syncBtn"><i class="fas fa-sync-alt"></i></button>
+            <button id="settingsBtn"><i class="fas fa-cog"></i></button>
+            <button id="lockBtn"><i class="fas fa-lock"></i></button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3>Categories</h3>
+                <div class="sidebar-item active" data-category="all">
+                    <i class="fas fa-key"></i>
+                    <span>All Passwords</span>
+                    <div class="count" id="allCount">0</div>
+                </div>
+                <div class="sidebar-item" data-category="web">
+                    <i class="fas fa-globe"></i>
+                    <span>Websites</span>
+                    <div class="count" id="webCount">0</div>
+                </div>
+                <div class="sidebar-item" data-category="card">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Credit Cards</span>
+                    <div class="count" id="cardCount">0</div>
+                </div>
+                <div class="sidebar-item" data-category="note">
+                    <i class="fas fa-sticky-note"></i>
+                    <span>Secure Notes</span>
+                    <div class="count" id="noteCount">0</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Tags</h3>
+                <div class="sidebar-item" data-tag="social">
+                    <i class="fas fa-tag"></i>
+                    <span>Social Media</span>
+                    <div class="count" id="socialCount">0</div>
+                </div>
+                <div class="sidebar-item" data-tag="email">
+                    <i class="fas fa-tag"></i>
+                    <span>Email</span>
+                    <div class="count" id="emailCount">0</div>
+                </div>
+                <div class="sidebar-item" data-tag="finance">
+                    <i class="fas fa-tag"></i>
+                    <span>Finance</span>
+                    <div class="count" id="financeCount">0</div>
+                </div>
+                <div class="sidebar-item" data-tag="work">
+                    <i class="fas fa-tag"></i>
+                    <span>Work</span>
+                    <div class="count" id="workCount">0</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Database</h3>
+                <div class="sidebar-item" id="saveDbBtn">
+                    <i class="fas fa-save"></i>
+                    <span>Save Database</span>
+                </div>
+                <div class="sidebar-item" id="loadDbBtn">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Load Database</span>
+                </div>
+                <div class="sidebar-item" id="newDbBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create New</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="content-header">
+                <h2 id="contentTitle">All Passwords</h2>
+                <button class="add-btn" id="addItemBtn">
+                    <i class="fas fa-plus"></i>
+                    Add New
+                </button>
+            </div>
+
+            <div class="password-grid" id="passwordGrid">
+                <!-- Password items will be dynamically inserted here -->
+            </div>
+
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2>Welcome to SafePass</h2>
+                <p>Your secure password manager. Create a new database or load an existing one to get started.</p>
+                <div class="welcome-actions">
+                    <button class="btn btn-primary" id="welcomeNewBtn">Create New Database</button>
+                    <button class="btn btn-secondary" id="welcomeLoadBtn">Load Database</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div class="modal" id="itemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Item</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="itemTitle">Title *</label>
+                    <input type="text" id="itemTitle" placeholder="Enter title" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemUsername">Username/Email *</label>
+                    <input type="text" id="itemUsername" placeholder="Enter username or email" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemPassword">Password *</label>
+                    <input type="password" id="itemPassword" placeholder="Enter password" required>
+                    <div class="password-generator">
+                        <div class="password-options">
+                            <div class="option-group">
+                                <label for="pwLength">Length:</label>
+                                <input type="number" id="pwLength" min="8" max="32" value="16">
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="pwUppercase" checked>
+                                <label for="pwUppercase">Uppercase (A-Z)</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="pwLowercase" checked>
+                                <label for="pwLowercase">Lowercase (a-z)</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="pwNumbers" checked>
+                                <label for="pwNumbers">Numbers (0-9)</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="pwSymbols" checked>
+                                <label for="pwSymbols">Symbols (!@#$)</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="pwExcludeSimilar">
+                                <label for="pwExcludeSimilar">Exclude similar (i,l,1,0,o)</label>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" id="generatePasswordBtn" style="width: 100%">
+                            <i class="fas fa-key"></i> Generate Password
+                        </button>
+                        <div class="generated-password">
+                            <input type="text" id="generatedPassword" readonly>
+                            <button id="usePasswordBtn"><i class="fas fa-check"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="itemUrl">URL</label>
+                    <input type="url" id="itemUrl" placeholder="https://">
+                </div>
+                <div class="form-group">
+                    <label for="itemCategory">Category</label>
+                    <select id="itemCategory">
+                        <option value="web">Website</option>
+                        <option value="card">Credit Card</option>
+                        <option value="note">Secure Note</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="itemTags">Tags (comma separated)</label>
+                    <input type="text" id="itemTags" placeholder="tag1, tag2, tag3">
+                </div>
+                <div class="form-group">
+                    <label for="itemNotes">Notes</label>
+                    <textarea id="itemNotes" placeholder="Add any additional notes"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveItemBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Modal -->
+    <div class="modal" id="dbModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="dbModalTitle">Create New Database</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="dbName">Database Name *</label>
+                    <input type="text" id="dbName" placeholder="MyPasswords" required>
+                </div>
+                <div class="form-group">
+                    <label for="dbPassword">Master Password *</label>
+                    <input type="password" id="dbPassword" placeholder="Enter a strong master password" required>
+                </div>
+                <div class="form-group">
+                    <label for="dbConfirmPassword">Confirm Password *</label>
+                    <input type="password" id="dbConfirmPassword" placeholder="Confirm your master password" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="dbCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="dbSaveBtn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unlock Modal -->
+    <div class="modal" id="unlockModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Unlock Database</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="unlockPassword">Master Password *</label>
+                    <input type="password" id="unlockPassword" placeholder="Enter your master password" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="unlockCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="unlockBtn">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File input (hidden) -->
+    <input type="file" id="fileInput" class="file-handler" accept=".safepass">
+
+    <div class="footer">
+        <p>SafePass Password Manager • Your data is encrypted and secure</p>
+    </div>
+
+    <script>
+        // Database and application state
+        let db = {
+            name: '',
+            items: [],
+            version: '1.0',
+            salt: null,
+            encrypted: false
+        };
+
+        let masterPassword = '';
+        let isDbLoaded = false;
+        let currentEditingId = null;
+        let encryptionKey = null;
+        let dbFileHandle = null; // File System Access API handle for the saved .safepass file (session only)
+
+
+        // DOM Elements
+        const passwordGrid = document.getElementById('passwordGrid');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const itemModal = document.getElementById('itemModal');
+        const dbModal = document.getElementById('dbModal');
+        const unlockModal = document.getElementById('unlockModal');
+        const fileInput = document.getElementById('fileInput');
+        const loadingScreen = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const toast = document.getElementById('toast');
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // Initialize the application
+        function initApp() {
+            // Check if Argon2 is available
+            if (typeof argon2 === 'undefined') {
+                showToast('Argon2id is required but not available. Check your connection/CDN.', 'error');
+                console.error('Argon2 not available — hard stop.');
+                return; // stop initializing; user can’t proceed without Argon2
+            }
+
+
+            bindEvents();
+            checkForExistingDatabase();
+        }
+
+        // Check for existing database in localStorage
+        function checkForExistingDatabase() {
+            const savedDb = localStorage.getItem('safepass_encrypted_db');
+            if (savedDb) {
+                try {
+                    const dbInfo = JSON.parse(savedDb);
+                    if (dbInfo && dbInfo.name) {
+                        // Database exists, show unlock screen
+                        unlockModal.style.display = 'flex';
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse database info from localStorage', e);
+                }
+            }
+            updateUI();
+        }
+
+        // Show loading screen
+        function showLoading(text = 'Processing...') {
+            loadingText.textContent = text;
+            loadingScreen.style.display = 'flex';
+        }
+
+        // Hide loading screen
+        function hideLoading() {
+            loadingScreen.style.display = 'none';
+        }
+
+        // --- helpers for Argon2 salt bytes ---
+        function hexToUint8Array(hex) {
+            if (hex.length % 2 !== 0) throw new Error('Invalid hex');
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return bytes;
+        }
+
+        function wordArrayToUint8Array(wordArray) {
+            // Convert CryptoJS WordArray -> Uint8Array
+            const words = wordArray.words;
+            const sigBytes = wordArray.sigBytes;
+            const u8 = new Uint8Array(sigBytes);
+            for (let i = 0; i < sigBytes; i++) {
+                u8[i] = (words[Math.floor(i / 4)] >>> (24 - 8 * (i % 4))) & 0xff;
+            }
+            return u8;
+        }
+
+        // Derive encryption key using Argon2id only
+        async function generateKey(password, saltIn) {
+            showLoading('Deriving encryption key with Argon2id...');
+            try {
+                // saltIn can be a hex string (from storage) or a WordArray (when new)
+                const saltBytes = (typeof saltIn === 'string') ?
+                    hexToUint8Array(saltIn) :
+                    wordArrayToUint8Array(saltIn);
+
+                const {
+                    hashHex
+                } = await argon2.hash({
+                    pass: password,
+                    salt: saltBytes,
+                    type: argon2.ArgonType.Argon2id,
+                    time: 3,
+                    mem: 65536,
+                    parallelism: 1,
+                    hashLen: 32
+                });
+
+                hideLoading();
+                return CryptoJS.enc.Hex.parse(hashHex); // AES wants WordArray
+            } catch (error) {
+                hideLoading();
+                console.error('Argon2 key derivation failed:', error);
+                throw new Error('Argon2 key derivation failed — cannot continue without Argon2id');
+            }
+        }
+
+
+        // Encrypt database with AES-256
+        // Encrypt database with AES-256, output raw binary (IV + ciphertext)
+        async function encryptDatabase(data, key) {
+            showLoading('Encrypting database...');
+            try {
+                const iv = CryptoJS.lib.WordArray.random(16); // 16-byte IV
+                const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), key, {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                });
+
+                hideLoading();
+
+                // Convert IV (WordArray) to Uint8Array
+                const ivBytes = CryptoJS.enc.Hex.parse(iv.toString(CryptoJS.enc.Hex));
+                const ivU8 = wordArrayToUint8Array(ivBytes);
+
+                // Ciphertext is Base64, so decode to raw bytes
+                const ciphertextWords = CryptoJS.enc.Base64.parse(encrypted.toString());
+                const ciphertextU8 = wordArrayToUint8Array(ciphertextWords);
+
+                // Concatenate IV + ciphertext into one Uint8Array
+                const combined = new Uint8Array(ivU8.length + ciphertextU8.length);
+                combined.set(ivU8, 0);
+                combined.set(ciphertextU8, ivU8.length);
+
+                return combined; // raw binary blob
+            } catch (error) {
+                hideLoading();
+                console.error('Encryption failed:', error);
+                throw new Error('Encryption failed');
+            }
+        }
+
+
+        // Decrypt database from raw binary (IV + ciphertext)
+        async function decryptDatabase(encryptedBlob, key) {
+            showLoading('Decrypting database...');
+            try {
+                const dataU8 = new Uint8Array(encryptedBlob);
+
+                // Split: first 16 bytes = IV
+                const ivU8 = dataU8.slice(0, 16);
+                const ciphertextU8 = dataU8.slice(16);
+
+                // Convert IV + ciphertext back into CryptoJS WordArrays
+                const ivWordArray = CryptoJS.enc.Hex.parse(
+                    Array.from(ivU8).map(b => ('00' + b.toString(16)).slice(-2)).join('')
+                );
+                const ciphertextWordArray = CryptoJS.lib.WordArray.create(ciphertextU8);
+
+                // Decrypt
+                const decrypted = CryptoJS.AES.decrypt({
+                        ciphertext: ciphertextWordArray
+                    },
+                    key, {
+                        iv: ivWordArray,
+                        mode: CryptoJS.mode.CBC,
+                        padding: CryptoJS.pad.Pkcs7
+                    }
+                );
+
+                const decryptedStr = decrypted.toString(CryptoJS.enc.Utf8);
+                if (!decryptedStr) throw new Error('Decryption failed - wrong password or corrupted data');
+
+                hideLoading();
+                return JSON.parse(decryptedStr);
+            } catch (error) {
+                hideLoading();
+                console.error('Decryption failed:', error);
+                throw new Error('Decryption failed - incorrect password or corrupted data');
+            }
+        }
+
+
+
+        // Save to localStorage with encryption
+        async function loadDatabaseFromLocalStorage(password) {
+            const stored = localStorage.getItem('safepass_encrypted_db');
+            if (!stored) return false;
+
+            try {
+                const dbInfo = JSON.parse(stored);
+
+                // Decode Base64 → Uint8Array
+                const binary = Uint8Array.from(atob(dbInfo.data), c => c.charCodeAt(0));
+
+                const key = await generateKey(password, dbInfo.salt);
+                const decryptedData = await decryptDatabase(binary, key);
+
+                currentDB = {
+                    name: dbInfo.name,
+                    salt: dbInfo.salt,
+                    data: decryptedData
+                };
+                currentKey = key;
+
+                showToast('Database loaded from localStorage');
+                updateUI();
+                return true;
+            } catch (error) {
+                console.error('Failed to load from localStorage:', error);
+                showToast('Error loading local database', 'error');
+                return false;
+            }
+        }
+
+
+        // Opens native "Save as..." dialog and stores the file handle (uses File System Access API)
+        // Falls back to download (exportDatabase) if API not available or user cancels.
+        async function saveDatabaseAs() {
+            // Ensure DB is created/loaded
+            if (!isDbLoaded) {
+                showToast('No database to save', 'error');
+                return;
+            }
+
+            // If browser doesn't support File System Access, fall back to download
+            if (!window.showSaveFilePicker) {
+                showToast('File Save API not supported — using download fallback', 'error');
+                await exportDatabase();
+                return;
+            }
+
+            try {
+                const opts = {
+                    suggestedName: `${db.name.replace(/\s+/g, '_')}.safepass`,
+                    types: [{
+                        description: 'SafePass Database',
+                        accept: {
+                            'application/json': ['.safepass']
+                        }
+                    }]
+                };
+
+                dbFileHandle = await window.showSaveFilePicker(opts);
+                await writeDatabaseFile(); // write initial content
+                showToast('Database saved to file!');
+            } catch (err) {
+                console.warn('Save As cancelled or failed:', err);
+                showToast('Save cancelled', 'error');
+            }
+        }
+
+        // Write (update) the selected file using the stored file handle.
+        // If no handle is stored, it opens the save-as dialog first.
+        async function writeDatabaseFile() {
+            if (!isDbLoaded) {
+                showToast('No database loaded', 'error');
+                return;
+            }
+
+            if (!dbFileHandle) {
+                await saveDatabaseAs();
+                return;
+            }
+
+            try {
+                const encryptedBlob = await encryptDatabase(db, encryptionKey);
+
+                const header = {
+                    name: db.name,
+                    kdf: 'argon2id',
+                    salt: (typeof db.salt === 'string') ? db.salt : db.salt.toString(CryptoJS.enc.Hex)
+                };
+                const headerBytes = new TextEncoder().encode(JSON.stringify(header) + "\n");
+
+                const combined = new Uint8Array(headerBytes.length + encryptedBlob.length);
+                combined.set(headerBytes, 0);
+                combined.set(encryptedBlob, headerBytes.length);
+
+                const writable = await dbFileHandle.createWritable();
+                await writable.write(combined);
+                await writable.close();
+
+                await saveDatabaseToLocalStorage();
+                showToast('Database file updated!');
+            } catch (err) {
+                console.error('Failed to write file:', err);
+                showToast('Failed to save file', 'error');
+            }
+        }
+
+
+
+
+        // Load from localStorage with decryption
+        async function loadDatabaseFromLocalStorage(password) {
+            const stored = localStorage.getItem('safepass_encrypted_db');
+            if (!stored) return false;
+
+            try {
+                const dbInfo = JSON.parse(stored);
+
+                // Decode Base64 → Uint8Array
+                const binary = Uint8Array.from(atob(dbInfo.data), c => c.charCodeAt(0));
+
+                const key = await generateKey(password, dbInfo.salt);
+                const decryptedData = await decryptDatabase(binary, key);
+
+                currentDB = {
+                    name: dbInfo.name,
+                    salt: dbInfo.salt,
+                    data: decryptedData
+                };
+                currentKey = key;
+
+                showToast('Database loaded from localStorage');
+                updateUI();
+                return true;
+            } catch (error) {
+                console.error('Failed to load from localStorage:', error);
+                showToast('Error loading local database', 'error');
+                return false;
+            }
+        }
+
+
+        // Bind all event listeners
+        function bindEvents() {
+            // Sidebar category selection
+            document.querySelectorAll('.sidebar-item[data-category]').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    filterByCategory(item.getAttribute('data-category'));
+                });
+            });
+
+            // Sidebar tag selection
+            document.querySelectorAll('.sidebar-item[data-tag]').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    filterByTag(item.getAttribute('data-tag'));
+                });
+            });
+
+            // Database operations
+            document.getElementById('newDbBtn').addEventListener('click', showNewDbModal);
+            document.getElementById('loadDbBtn').addEventListener('click', () => fileInput.click());
+            document.getElementById('saveDbBtn').addEventListener('click', writeDatabaseFile);
+
+
+            // File input handling
+            fileInput.addEventListener('change', handleFileImport);
+
+            // Modal buttons
+            document.getElementById('addItemBtn').addEventListener('click', () => showItemModal());
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    itemModal.style.display = 'none';
+                    dbModal.style.display = 'none';
+                    unlockModal.style.display = 'none';
+                });
+            });
+
+            document.getElementById('cancelBtn').addEventListener('click', () => itemModal.style.display = 'none');
+            document.getElementById('saveItemBtn').addEventListener('click', saveItem);
+
+            document.getElementById('dbCancelBtn').addEventListener('click', () => dbModal.style.display = 'none');
+            document.getElementById('dbSaveBtn').addEventListener('click', createDatabase);
+
+            document.getElementById('unlockCancelBtn').addEventListener('click', () => unlockModal.style.display = 'none');
+            document.getElementById('unlockBtn').addEventListener('click', unlockDatabase);
+
+            // Welcome screen buttons
+            document.getElementById('welcomeNewBtn').addEventListener('click', showNewDbModal);
+            document.getElementById('welcomeLoadBtn').addEventListener('click', () => fileInput.click());
+
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', searchItems);
+
+            // Lock button
+            document.getElementById('lockBtn').addEventListener('click', lockDatabase);
+
+            // Sync button
+            document.getElementById('syncBtn').addEventListener('click', async () => {
+                await saveDatabaseToLocalStorage();
+                // If we have a file handle, update the file too (fallback to Save As if not)
+                try {
+                    await writeDatabaseFile();
+                } catch (e) {
+                    // writeDatabaseFile already shows toast on error, so just log
+                    console.warn('Sync file write failed', e);
+                }
+            });
+
+
+            // Settings button
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                showToast('Settings feature coming soon!', 'error');
+            });
+
+            // Password generation
+            document.getElementById('generatePasswordBtn').addEventListener('click', generatePassword);
+            document.getElementById('usePasswordBtn').addEventListener('click', useGeneratedPassword);
+        }
+
+        // Update UI based on application state
+        function updateUI() {
+            if (isDbLoaded) {
+                welcomeScreen.style.display = 'none';
+                passwordGrid.style.display = 'grid';
+                renderItems(db.items);
+                updateCounts();
+            } else {
+                welcomeScreen.style.display = 'flex';
+                passwordGrid.style.display = 'none';
+            }
+
+            document.getElementById('contentTitle').textContent = 'All Passwords';
+        }
+
+        // Render password items
+        function renderItems(items) {
+            passwordGrid.innerHTML = '';
+
+            if (items.length === 0) {
+                passwordGrid.innerHTML = '<p class="no-items">No password items yet. Click "Add New" to create your first entry.</p>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'password-card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="favicon">
+                            <i class="fas ${getCategoryIcon(item.category)}"></i>
+                        </div>
+                        <div>
+                            <div class="card-title">${escapeHtml(item.title)}</div>
+                            <div class="card-username">${escapeHtml(item.username)}</div>
+                        </div>
+                    </div>
+                    <div class="card-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Password:</span>
+                            <span class="detail-value">
+                                <span class="password-masked" data-id="${item.id}">
+                                    <span>••••••••</span>
+                                    <button class="show-password" data-id="${item.id}"><i class="fas fa-eye"></i></button>
+                                </span>
+                            </span>
+                        </div>
+                        ${item.url ? `<div class="detail-item">
+                            <span class="detail-label">URL:</span>
+                            <span class="detail-value"><a href="${escapeHtml(item.url)}" target="_blank">${escapeHtml(item.url)}</a></span>
+                        </div>` : ''}
+                        ${item.tags && item.tags.length > 0 ? `<div class="detail-item">
+                            <span class="detail-label">Tags:</span>
+                            <span class="detail-value">${escapeHtml(item.tags.join(', '))}</span>
+                        </div>` : ''}
+                    </div>
+                    <div class="card-actions">
+                        <button class="edit-item" data-id="${item.id}"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="delete-item" data-id="${item.id}"><i class="fas fa-trash-alt"></i> Delete</button>
+                    </div>
+                `;
+                passwordGrid.appendChild(card);
+            });
+
+            // Add event listeners for the new elements
+            document.querySelectorAll('.show-password').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    togglePasswordVisibility(id);
+                });
+            });
+
+            document.querySelectorAll('.edit-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    editItem(id);
+                });
+            });
+
+            document.querySelectorAll('.delete-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    deleteItem(id);
+                });
+            });
+        }
+
+        // Toggle password visibility
+        function togglePasswordVisibility(id) {
+            const item = db.items.find(i => i.id === id);
+            if (!item) return;
+
+            const passwordContainer = document.querySelector(`.password-masked[data-id="${id}"]`);
+            const passwordSpan = passwordContainer.querySelector('span');
+            const btn = passwordContainer.querySelector('.show-password');
+
+            if (passwordSpan.textContent === '••••••••') {
+                passwordSpan.textContent = item.password;
+                btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                passwordSpan.textContent = '••••••••';
+                btn.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        // Get icon for category
+        function getCategoryIcon(category) {
+            switch (category) {
+                case 'web':
+                    return 'fa-globe';
+                case 'card':
+                    return 'fa-credit-card';
+                case 'note':
+                    return 'fa-sticky-note';
+                default:
+                    return 'fa-key';
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Update item counts
+        function updateCounts() {
+            document.getElementById('allCount').textContent = db.items.length;
+            document.getElementById('webCount').textContent = db.items.filter(i => i.category === 'web').length;
+            document.getElementById('cardCount').textContent = db.items.filter(i => i.category === 'card').length;
+            document.getElementById('noteCount').textContent = db.items.filter(i => i.category === 'note').length;
+
+            // Update tag counts
+            document.getElementById('socialCount').textContent = db.items.filter(i => i.tags && i.tags.includes('social')).length;
+            document.getElementById('emailCount').textContent = db.items.filter(i => i.tags && i.tags.includes('email')).length;
+            document.getElementById('financeCount').textContent = db.items.filter(i => i.tags && i.tags.includes('finance')).length;
+            document.getElementById('workCount').textContent = db.items.filter(i => i.tags && i.tags.includes('work')).length;
+        }
+
+        // Filter items by category
+        function filterByCategory(category) {
+            if (category === 'all') {
+                renderItems(db.items);
+                document.getElementById('contentTitle').textContent = 'All Passwords';
+            } else {
+                const filtered = db.items.filter(item => item.category === category);
+                renderItems(filtered);
+                document.getElementById('contentTitle').textContent = document.querySelector(`.sidebar-item[data-category="${category}"] span`).textContent;
+            }
+        }
+
+        // Filter items by tag
+        function filterByTag(tag) {
+            const filtered = db.items.filter(item => item.tags && item.tags.includes(tag));
+            renderItems(filtered);
+            document.getElementById('contentTitle').textContent = document.querySelector(`.sidebar-item[data-tag="${tag}"] span`).textContent;
+        }
+
+        // Search items
+        function searchItems() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            if (!query) {
+                // Reset to current category view when search is cleared
+                const activeCategory = document.querySelector('.sidebar-item.active').getAttribute('data-category');
+                if (activeCategory) {
+                    filterByCategory(activeCategory);
+                } else {
+                    const activeTag = document.querySelector('.sidebar-item.active').getAttribute('data-tag');
+                    if (activeTag) {
+                        filterByTag(activeTag);
+                    } else {
+                        renderItems(db.items);
+                        document.getElementById('contentTitle').textContent = 'All Passwords';
+                    }
+                }
+                return;
+            }
+
+            const filtered = db.items.filter(item =>
+                item.title.toLowerCase().includes(query) ||
+                item.username.toLowerCase().includes(query) ||
+                (item.url && item.url.toLowerCase().includes(query)) ||
+                (item.tags && item.tags.some(tag => tag.toLowerCase().includes(query))) ||
+                (item.notes && item.notes.toLowerCase().includes(query))
+            );
+
+            renderItems(filtered);
+            document.getElementById('contentTitle').textContent = `Search Results for "${query}"`;
+        }
+
+        // Show item modal for adding/editing
+        function showItemModal(item = null) {
+            if (!isDbLoaded) {
+                showToast('Please create or load a database first', 'error');
+                return;
+            }
+
+            currentEditingId = item ? item.id : null;
+
+            document.getElementById('modalTitle').textContent = item ? 'Edit Item' : 'Add New Item';
+            document.getElementById('itemTitle').value = item ? item.title : '';
+            document.getElementById('itemUsername').value = item ? item.username : '';
+            document.getElementById('itemPassword').value = item ? item.password : '';
+            document.getElementById('itemUrl').value = item ? item.url : '';
+            document.getElementById('itemCategory').value = item ? item.category : 'web';
+            document.getElementById('itemTags').value = item && item.tags ? item.tags.join(', ') : '';
+            document.getElementById('itemNotes').value = item ? item.notes : '';
+
+            itemModal.style.display = 'flex';
+        }
+
+        // Save item (add or edit)
+        function saveItem() {
+            const title = document.getElementById('itemTitle').value.trim();
+            const username = document.getElementById('itemUsername').value.trim();
+            const password = document.getElementById('itemPassword').value.trim();
+            const url = document.getElementById('itemUrl').value.trim();
+            const category = document.getElementById('itemCategory').value;
+            const tags = document.getElementById('itemTags').value.split(',').map(t => t.trim()).filter(t => t);
+            const notes = document.getElementById('itemNotes').value.trim();
+
+            if (!title || !username || !password) {
+                showToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            if (currentEditingId) {
+                // Update existing item
+                const index = db.items.findIndex(item => item.id === currentEditingId);
+                if (index !== -1) {
+                    db.items[index] = {
+                        ...db.items[index],
+                        title,
+                        username,
+                        password,
+                        url,
+                        category,
+                        tags,
+                        notes,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            } else {
+                // Add new item
+                const newItem = {
+                    id: generateId(),
+                    title,
+                    username,
+                    password,
+                    url,
+                    category,
+                    tags,
+                    notes,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                db.items.push(newItem);
+            }
+
+            saveDatabaseToLocalStorage();
+            renderItems(db.items);
+            updateCounts();
+            itemModal.style.display = 'none';
+
+            showToast(`Item ${currentEditingId ? 'updated' : 'added'} successfully!`);
+            currentEditingId = null;
+        }
+
+        // Edit item
+        function editItem(id) {
+            const item = db.items.find(i => i.id === id);
+            if (item) {
+                showItemModal(item);
+            }
+        }
+
+        // Delete item
+        function deleteItem(id) {
+            if (!confirm('Are you sure you want to delete this item?')) {
+                return;
+            }
+
+            db.items = db.items.filter(item => item.id !== id);
+            saveDatabaseToLocalStorage();
+            renderItems(db.items);
+            updateCounts();
+
+            showToast('Item deleted successfully!');
+        }
+
+        // Generate a random ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Show new database modal
+        function showNewDbModal() {
+            document.getElementById('dbModalTitle').textContent = 'Create New Database';
+            document.getElementById('dbName').value = '';
+            document.getElementById('dbPassword').value = '';
+            document.getElementById('dbConfirmPassword').value = '';
+            dbModal.style.display = 'flex';
+        }
+
+        // Create a new database
+        async function createDatabase() {
+            const name = document.getElementById('dbName').value.trim();
+            const password = document.getElementById('dbPassword').value;
+            const confirmPassword = document.getElementById('dbConfirmPassword').value;
+
+            if (!name) {
+                showToast('Please enter a database name', 'error');
+                return;
+            }
+
+            if (!password) {
+                showToast('Please enter a master password', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match', 'error');
+                return;
+            }
+
+            if (password.length < 8) {
+                showToast('Master password must be at least 8 characters', 'error');
+                return;
+            }
+
+            try {
+                // Generate a random salt
+                const salt = CryptoJS.lib.WordArray.random(16);
+
+                // Generate encryption key
+                const key = await generateKey(password, salt);
+
+                // Initialize the database
+                db = {
+                    name,
+                    items: [],
+                    version: '1.0',
+                    salt: salt.toString(CryptoJS.enc.Hex),
+                    encrypted: true
+                };
+
+                encryptionKey = key;
+                isDbLoaded = true;
+                masterPassword = password;
+
+                // Save to localStorage
+                await saveDatabaseToLocalStorage();
+
+                // Update UI
+                updateUI();
+                dbModal.style.display = 'none';
+
+                showToast('Database created successfully!');
+            } catch (error) {
+                console.error('Database creation failed:', error);
+                showToast('Database creation failed: ' + error.message, 'error');
+            }
+        }
+
+        // Unlock database
+        async function unlockDatabase() {
+            const password = document.getElementById('unlockPassword').value;
+
+            if (!password) {
+                showToast('Please enter your master password', 'error');
+                return;
+            }
+
+            try {
+                const success = await loadDatabaseFromLocalStorage(password);
+                if (success) {
+                    masterPassword = password;
+                    isDbLoaded = true;
+                    unlockModal.style.display = 'none';
+                    updateUI();
+                    showToast('Database unlocked successfully!');
+                } else {
+                    showToast('Failed to unlock database', 'error');
+                }
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Lock database
+        function lockDatabase() {
+            if (!isDbLoaded) {
+                showToast('No database is currently loaded', 'error');
+                return;
+            }
+
+            db = {
+                name: '',
+                items: [],
+                version: '1.0',
+                salt: null,
+                encrypted: false
+            };
+
+            masterPassword = '';
+            isDbLoaded = false;
+            encryptionKey = null;
+
+            updateUI();
+            showToast('Database locked successfully!');
+        }
+
+        // Export database to file
+        async function exportDatabase() {
+            if (!currentDB || !currentKey) return;
+
+            try {
+                const encryptedBlob = await encryptDatabase(currentDB.data, currentKey);
+
+                const fileData = {
+                    name: currentDB.name,
+                    kdf: 'argon2id',
+                    salt: (typeof currentDB.salt === 'string') ?
+                        currentDB.salt : currentDB.salt.toString(CryptoJS.enc.Hex)
+                };
+
+                // Create a header (JSON) + raw binary
+                const header = new TextEncoder().encode(JSON.stringify(fileData) + "\n");
+                const combined = new Uint8Array(header.length + encryptedBlob.length);
+                combined.set(header, 0);
+                combined.set(encryptedBlob, header.length);
+
+                const blob = new Blob([combined], {
+                    type: "application/octet-stream"
+                });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = currentDB.name + ".safepassbin";
+                a.click();
+
+                URL.revokeObjectURL(url);
+                showToast('Database exported');
+            } catch (error) {
+                console.error('Export failed:', error);
+                showToast('Error exporting database', 'error');
+            }
+        }
+
+
+        // Handle file import
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const allBytes = new Uint8Array(e.target.result);
+
+                    // Split at first newline (header vs data)
+                    const newlineIndex = allBytes.indexOf(10); // "\n"
+                    const headerBytes = allBytes.slice(0, newlineIndex);
+                    const bodyBytes = allBytes.slice(newlineIndex + 1);
+
+                    const dbInfo = JSON.parse(new TextDecoder().decode(headerBytes));
+
+                    const password = prompt('Enter master password:');
+                    if (!password) return;
+
+                    const key = await generateKey(password, dbInfo.salt);
+                    const decryptedData = await decryptDatabase(bodyBytes, key);
+
+                    currentDB = {
+                        name: dbInfo.name,
+                        salt: dbInfo.salt,
+                        data: decryptedData
+                    };
+                    currentKey = key;
+
+                    showToast('Database imported successfully');
+                    updateUI();
+                } catch (error) {
+                    console.error('File import failed:', error);
+                    showToast('Error importing database', 'error');
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+
+        // Generate a secure password
+        function generatePassword() {
+            const length = parseInt(document.getElementById('pwLength').value) || 16;
+            const useUppercase = document.getElementById('pwUppercase').checked;
+            const useLowercase = document.getElementById('pwLowercase').checked;
+            const useNumbers = document.getElementById('pwNumbers').checked;
+            const useSymbols = document.getElementById('pwSymbols').checked;
+            const excludeSimilar = document.getElementById('pwExcludeSimilar').checked;
+
+            if (length < 8 || length > 32) {
+                showToast('Password length must be between 8 and 32 characters', 'error');
+                return;
+            }
+
+            if (!useUppercase && !useLowercase && !useNumbers && !useSymbols) {
+                showToast('Please select at least one character type', 'error');
+                return;
+            }
+
+            let charset = '';
+            if (useLowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
+            if (useUppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            if (useNumbers) charset += '0123456789';
+            if (useSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+            if (excludeSimilar) {
+                charset = charset.replace(/[il1Lo0O]/g, '');
+            }
+
+            let password = '';
+            const values = new Uint32Array(length);
+            window.crypto.getRandomValues(values);
+
+            for (let i = 0; i < length; i++) {
+                password += charset[values[i] % charset.length];
+            }
+
+            document.getElementById('generatedPassword').value = password;
+        }
+
+        // Use the generated password
+        function useGeneratedPassword() {
+            const generatedPassword = document.getElementById('generatedPassword').value;
+            if (generatedPassword) {
+                document.getElementById('itemPassword').value = generatedPassword;
+            }
+        }
+
+        // Initialize the application when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+        // --- Helper: convert Uint8Array -> Base64 (safe for storage) ---
+        function uint8ArrayToBase64(u8) {
+            const CHUNK_SIZE = 0x8000;
+            let i = 0,
+                str = '';
+            while (i < u8.length) {
+                const chunk = u8.subarray(i, Math.min(i + CHUNK_SIZE, u8.length));
+                str += String.fromCharCode.apply(null, chunk);
+                i += CHUNK_SIZE;
+            }
+            return btoa(str);
+        }
+
+        // --- Save current DB to localStorage (binary-safe) ---
+        async function saveDatabaseToLocalStorage() {
+            if (!db || !encryptionKey) {
+                throw new Error('No database or key available');
+            }
+
+            const encryptedBlob = await encryptDatabase(db, encryptionKey);
+            const base64Data = uint8ArrayToBase64(encryptedBlob);
+
+            localStorage.setItem('safepass_encrypted_db', JSON.stringify({
+                name: db.name,
+                kdf: 'argon2id',
+                salt: db.salt,
+                data: base64Data
+            }));
+
+            showToast('Database saved locally');
+        }
+        // --- Helper: Base64 -> Uint8Array ---
+        // --- Helper: Uint8Array -> Base64 ---
+        function uint8ArrayToBase64(u8) {
+            const CHUNK_SIZE = 0x8000;
+            let i = 0,
+                str = '';
+            while (i < u8.length) {
+                const chunk = u8.subarray(i, Math.min(i + CHUNK_SIZE, u8.length));
+                str += String.fromCharCode.apply(null, chunk);
+                i += CHUNK_SIZE;
+            }
+            return btoa(str);
+        }
+
+        // --- Helper: Base64 -> Uint8Array ---
+        function base64ToUint8Array(base64) {
+            const binary = atob(base64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        // --- Save database to localStorage (Base64 JSON) ---
+        async function saveDatabaseToLocalStorage() {
+            if (!db || !encryptionKey) {
+                throw new Error('No database or key available');
+            }
+
+            const encryptedBlob = await encryptDatabase(db, encryptionKey);
+            const base64Data = uint8ArrayToBase64(encryptedBlob);
+
+            localStorage.setItem('safepass_encrypted_db', JSON.stringify({
+                name: db.name,
+                kdf: 'argon2id',
+                salt: db.salt,
+                data: base64Data
+            }));
+
+            showToast('Database saved locally');
+        }
+
+        // --- Load database from localStorage (Base64 JSON) ---
+        async function loadDatabaseFromLocalStorage(password) {
+            const stored = localStorage.getItem('safepass_encrypted_db');
+            if (!stored) return false;
+
+            try {
+                const dbInfo = JSON.parse(stored);
+                const binary = base64ToUint8Array(dbInfo.data);
+
+                const key = await generateKey(password, dbInfo.salt);
+                const decryptedData = await decryptDatabase(binary, key);
+
+                db = {
+                    name: dbInfo.name,
+                    salt: dbInfo.salt,
+                    data: decryptedData,
+                    encrypted: true
+                };
+                encryptionKey = key;
+                isDbLoaded = true;
+                masterPassword = password;
+
+                showToast('Database loaded from localStorage');
+                updateUI();
+                return true;
+            } catch (error) {
+                console.error('Failed to load from localStorage:', error);
+                showToast('Error loading local database: ' + error.message, 'error');
+                return false;
+            }
+        }
+    </script>
+</body>
+
+</html>
